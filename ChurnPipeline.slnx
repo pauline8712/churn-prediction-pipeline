@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Churn.Api/Churn.Api.csproj" />
+    <Project Path="src/Churn.Core/Churn.Core.csproj" />
+    <Project Path="src/Churn.Data/Churn.Data.csproj" />
+    <Project Path="src/Churn.Simulator/Churn.Simulator.csproj" />
+    <Project Path="src/Churn.Training/Churn.Training.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Churn.Tests/Churn.Tests.csproj" />
+  </Folder>
+</Solution>
