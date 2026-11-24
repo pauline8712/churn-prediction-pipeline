@@ -2,6 +2,7 @@ using Churn.Core;
 using Churn.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.ML;
+using Churn.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,9 @@ string ResolvePath(string key) =>
 
 var modelPath = ResolvePath("Model:Path");
 var metadataPath = ResolvePath("Model:MetadataPath");
+
+// DateTimeOffset keeps the "Z" (UTC) from appsettings; DateTime would convert it to local time
+var referenceDateUtc = builder.Configuration.GetValue<DateTimeOffset>("Model:ReferenceDateUtc").UtcDateTime;
 
 builder.Services.AddOpenApi();
 
@@ -24,6 +28,10 @@ builder.Services.AddPredictionEnginePool<UserFeatures, ChurnPrediction>()
         modelName: "churn",
         filePath: modelPath,
         watchForChanges: true);
+
+// Our own services
+builder.Services.AddSingleton(new ModelSettings(modelPath, metadataPath, referenceDateUtc));
+builder.Services.AddScoped<ChurnScoringService>();
 
 var app = builder.Build();
 
@@ -41,5 +49,15 @@ app.MapGet("/users/count", async (ChurnDbContext db) =>
 // Smoke test: which model is loaded?
 app.MapGet("/model", () =>
     Results.Text(File.ReadAllText(metadataPath), "application/json"));
+
+// Churn risk for a single user
+app.MapGet("/users/{id:int}/churn-risk", async (int id, ChurnScoringService scoring) =>
+    await scoring.ScoreUserAsync(id) is { } risk
+        ? Results.Ok(risk)
+        : Results.NotFound());
+
+// The users most likely to churn right now
+app.MapGet("/users/at-risk", async (ChurnScoringService scoring, int top = 20) =>
+    Results.Ok(await scoring.GetAtRiskAsync(top)));
 
 app.Run();
