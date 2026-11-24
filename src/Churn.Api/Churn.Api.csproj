@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.ML" Version="6.0.0" />
+    <PackageReference Include="Microsoft.ML.FastTree" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
