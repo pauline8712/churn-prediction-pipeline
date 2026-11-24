@@ -75,3 +75,24 @@ foreach (var threshold in new[] { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f })
 
     Console.WriteLine($"   {threshold:F1}    |  {r.Precision,6:P1}  | {r.Recall,6:P1} | {r.F1:F3} | {flagged,6}");
 }
+
+// ---------- Save the model and promote it if it is better ----------
+var chosen = Evaluation.FromPairs(
+    scored.Select(s => (s.Actual, s.Probability >= ModelTrainer.DecisionThreshold)));
+
+var metadata = new Churn.Core.ModelMetadata
+{
+    TrainedAtUtc = DateTime.UtcNow,
+    Threshold = ModelTrainer.DecisionThreshold,
+    Auc = metrics.AreaUnderRocCurve,
+    F1 = chosen.F1,
+    Precision = chosen.Precision,
+    Recall = chosen.Recall,
+    TrainRows = trainRows.Count,
+    TestRows = testRows.Count,
+    Features = ModelTrainer.FeatureColumns,
+};
+
+Console.WriteLine();
+var registry = new ModelRegistry("models");
+registry.SaveAndMaybePromote(ml, model, trainData.Schema, metadata);

@@ -5,9 +5,13 @@ namespace Churn.Training;
 // Builds and trains the ML.NET pipeline
 public static class ModelTrainer
 {
+
+        // Chosen from the threshold comparison: good balance between precision and recall
+    public const float DecisionThreshold = 0.4f;
     // The only columns the model is allowed to see
     public static readonly string[] FeatureColumns =
     {
+        
         nameof(ModelInput.DaysSinceLastEvent),
         nameof(ModelInput.SessionsLast7Days),
         nameof(ModelInput.SessionsLast30Days),
