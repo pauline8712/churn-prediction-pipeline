@@ -54,7 +54,7 @@ app.MapGet("/model", () =>
 app.MapGet("/users/{id:int}/churn-risk", async (int id, ChurnScoringService scoring) =>
     await scoring.ScoreUserAsync(id) is { } risk
         ? Results.Ok(risk)
-        : Results.NotFound());
+        : Results.NotFound(new { message = $"User {id} not found" }));
 
 // The users most likely to churn right now
 app.MapGet("/users/at-risk", async (ChurnScoringService scoring, int top = 20) =>
