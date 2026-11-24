@@ -60,3 +60,18 @@ Evaluation.Print("FastTree model", new ClassificationResult(
 Console.WriteLine($"AUC:       {metrics.AreaUnderRocCurve:F3}");
 Console.WriteLine();
 Console.WriteLine(metrics.ConfusionMatrix.GetFormattedConfusionTable());
+
+// ---------- Compare decision thresholds ----------
+var scored = ml.Data.CreateEnumerable<ModelOutput>(predictions, reuseRowObject: false).ToList();
+
+Console.WriteLine();
+Console.WriteLine("Threshold | Precision | Recall | F1    | Flagged");
+Console.WriteLine("----------|-----------|--------|-------|--------");
+
+foreach (var threshold in new[] { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f })
+{
+    var r = Evaluation.FromPairs(scored.Select(s => (s.Actual, s.Probability >= threshold)));
+    int flagged = scored.Count(s => s.Probability >= threshold);
+
+    Console.WriteLine($"   {threshold:F1}    |  {r.Precision,6:P1}  | {r.Recall,6:P1} | {r.F1:F3} | {flagged,6}");
+}
