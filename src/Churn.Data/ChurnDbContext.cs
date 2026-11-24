@@ -16,6 +16,8 @@ public class ChurnDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // TODO: add an index here (see question below)
+        // Composite index: feature queries look up one user's events in a time range
+        modelBuilder.Entity<UserEvent>()
+            .HasIndex(e => new { e.UserId, e.TimestampUtc });
     }
 }
