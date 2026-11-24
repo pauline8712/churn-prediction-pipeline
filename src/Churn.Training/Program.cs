@@ -38,3 +38,25 @@ var (trainRows, testRows) = DataSplitter.SplitByTime(allRows, firstTestCutoff: "
 Console.WriteLine();
 Console.WriteLine($"Train: {trainRows.Count:N0} rows, {trainRows.Count(r => r.Churned):N0} churned");
 Console.WriteLine($"Test:  {testRows.Count:N0} rows, {testRows.Count(r => r.Churned):N0} churned");
+
+// ---------- Baseline ----------
+var baselineResult = Evaluation.FromPairs(
+    testRows.Select(r => (r.Churned, Baseline.Predict(r))));
+Evaluation.Print($"Baseline (inactive > {Baseline.InactiveDaysThreshold} days)", baselineResult);
+
+// ---------- Train and evaluate the model ----------
+var trainData = ml.Data.LoadFromEnumerable(trainRows);
+var testData = ml.Data.LoadFromEnumerable(testRows);
+
+Console.WriteLine();
+Console.WriteLine("Training FastTree model...");
+var model = ModelTrainer.Train(ml, trainData);
+
+var predictions = model.Transform(testData);
+var metrics = ml.BinaryClassification.Evaluate(predictions, labelColumnName: "Label");
+
+Evaluation.Print("FastTree model", new ClassificationResult(
+    metrics.PositivePrecision, metrics.PositiveRecall, metrics.F1Score, metrics.Accuracy));
+Console.WriteLine($"AUC:       {metrics.AreaUnderRocCurve:F3}");
+Console.WriteLine();
+Console.WriteLine(metrics.ConfusionMatrix.GetFormattedConfusionTable());
