@@ -22,6 +22,57 @@ namespace Churn.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Churn.Core.PredictionLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<float>("AccountAgeDays")
+                        .HasColumnType("real");
+
+                    b.Property<float>("ActivityTrend")
+                        .HasColumnType("real");
+
+                    b.Property<bool>("AtRisk")
+                        .HasColumnType("boolean");
+
+                    b.Property<float>("DaysSinceLastEvent")
+                        .HasColumnType("real");
+
+                    b.Property<int>("ModelVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<float>("PageViewsPerSession")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("PredictedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<float>("Probability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("PurchasesLast30Days")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SessionsLast30Days")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SessionsLast7Days")
+                        .HasColumnType("real");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PredictedAtUtc");
+
+                    b.ToTable("PredictionLogs");
+                });
+
             modelBuilder.Entity("Churn.Core.User", b =>
                 {
                     b.Property<int>("Id")
