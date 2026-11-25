@@ -98,6 +98,7 @@ public static class TrainingPipeline
             TrainRows = trainRows.Count,
             TestRows = testRows.Count,
             Features = ModelTrainer.FeatureColumns,
+            FeatureBaseline = FeatureBaseline.Compute(trainRows),
         };
 
         Console.WriteLine();

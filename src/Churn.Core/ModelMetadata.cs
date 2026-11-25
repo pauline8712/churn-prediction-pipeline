@@ -18,4 +18,7 @@ public record ModelMetadata
     public int TrainRows { get; init; }
     public int TestRows { get; init; }
     public string[] Features { get; init; } = [];
+
+    // How each feature looked in the training data (baseline for drift detection)
+    public Dictionary<string, FeatureStatistics> FeatureBaseline { get; init; } = new();
 }

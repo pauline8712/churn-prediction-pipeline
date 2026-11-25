@@ -32,6 +32,7 @@ builder.Services.AddPredictionEnginePool<UserFeatures, ChurnPrediction>()
 // Our own services
 builder.Services.AddSingleton(new ModelSettings(modelPath, metadataPath, referenceDateUtc));
 builder.Services.AddScoped<ChurnScoringService>();
+builder.Services.AddScoped<MonitoringService>();
 
 var app = builder.Build();
 
@@ -59,5 +60,9 @@ app.MapGet("/users/{id:int}/churn-risk", async (int id, ChurnScoringService scor
 // The users most likely to churn right now
 app.MapGet("/users/at-risk", async (ChurnScoringService scoring, int top = 20) =>
     Results.Ok(await scoring.GetAtRiskAsync(top)));
+
+// Model health: prediction stats and feature drift compared with training
+app.MapGet("/metrics", async (MonitoringService monitoring, int hours = 24) =>
+    Results.Ok(await monitoring.GetMetricsAsync(hours)));
 
 app.Run();

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Churn.Core;
 using Churn.Data;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +5,8 @@ using Microsoft.Extensions.ML;
 
 namespace Churn.Api;
 
-// Loads users from the database, computes features and asks the model for a churn probability
+// Loads users from the database, computes features, asks the model for a churn probability
+// and logs every prediction for monitoring
 public class ChurnScoringService(
     ChurnDbContext db,
     PredictionEnginePool<UserFeatures, ChurnPrediction> pool,
@@ -24,7 +24,15 @@ public class ChurnScoringService(
             .Include(u => u.Events.Where(e => e.TimestampUtc < reference))
             .FirstOrDefaultAsync(u => u.Id == userId);
 
-        return user is null ? null : Score(user, ReadThreshold());
+        if (user is null)
+            return null;
+
+        var (risk, log) = Score(user, settings.ReadMetadata());
+
+        db.PredictionLogs.Add(log);
+        await db.SaveChangesAsync();
+
+        return risk;
     }
 
     public async Task<List<ChurnRisk>> GetAtRiskAsync(int top)
@@ -40,36 +48,56 @@ public class ChurnScoringService(
             .AsSplitQuery()
             .ToListAsync();
 
-        float threshold = ReadThreshold();
+        var metadata = settings.ReadMetadata();
+        var scored = users.Select(u => Score(u, metadata)).ToList();
 
-        return users
-            .Select(u => Score(u, threshold))
+        // Log every prediction in a single round trip, not one insert per user
+        db.PredictionLogs.AddRange(scored.Select(s => s.Log));
+        await db.SaveChangesAsync();
+
+        return scored
+            .Select(s => s.Risk)
             .Where(r => r.AtRisk)
             .OrderByDescending(r => r.Probability)
             .Take(top)
             .ToList();
     }
 
-    private ChurnRisk Score(User user, float threshold)
+    private (ChurnRisk Risk, PredictionLog Log) Score(User user, ModelMetadata metadata)
     {
         // The SAME feature code as training: this is what prevents train/serve skew
-        var features = FeatureCalculator.Calculate(
+        var f = FeatureCalculator.Calculate(
             user.Id, user.SignupDateUtc, user.Events, settings.ReferenceDateUtc);
 
-        var prediction = pool.Predict(modelName: "churn", example: features);
+        var prediction = pool.Predict(modelName: "churn", example: f);
+        bool atRisk = prediction.Probability >= metadata.Threshold;
 
-        return new ChurnRisk(
+        var risk = new ChurnRisk(
             user.Id,
             prediction.Probability,
-            prediction.Probability >= threshold,
-            threshold,
-            features.DaysSinceLastEvent,
-            features.SessionsLast7Days,
-            features.SessionsLast30Days,
-            features.ActivityTrend);
-    }
+            atRisk,
+            metadata.Threshold,
+            f.DaysSinceLastEvent,
+            f.SessionsLast7Days,
+            f.SessionsLast30Days,
+            f.ActivityTrend);
 
-    // Read the threshold from the current model's metadata, so it follows the model
-    private float ReadThreshold() =>
-        JsonSerializer.Deserialize<ModelMetadata>(File.ReadAllText(settings.MetadataPath))!.Threshold;
+        var log = new PredictionLog
+        {
+            UserId = user.Id,
+            PredictedAtUtc = DateTime.UtcNow,
+            ModelVersion = metadata.Version,
+            Probability = prediction.Probability,
+            AtRisk = atRisk,
+            DaysSinceLastEvent = f.DaysSinceLastEvent,
+            SessionsLast7Days = f.SessionsLast7Days,
+            SessionsLast30Days = f.SessionsLast30Days,
+            ActivityTrend = f.ActivityTrend,
+            PurchasesLast30Days = f.PurchasesLast30Days,
+            PageViewsPerSession = f.PageViewsPerSession,
+            AccountAgeDays = f.AccountAgeDays,
+        };
+
+        return (risk, log);
+    }
 }
