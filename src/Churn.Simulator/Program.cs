@@ -13,6 +13,9 @@ var simulationStart = simulationEnd.AddDays(-180);
 var random = new Random(Seed);
 using var db = new ChurnDbContextFactory().CreateDbContext(args);
 
+// Create or update the tables (needed in a fresh Docker environment)
+db.Database.Migrate();
+
 // Start from an empty database and reset the ids, so reruns give identical results
 Console.WriteLine("Clearing existing data...");
 db.Database.ExecuteSqlRaw("TRUNCATE \"UserEvents\", \"Users\" RESTART IDENTITY;");

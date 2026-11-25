@@ -9,6 +9,51 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Other services wait until Postgres actually accepts connections
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U churn -d churn"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  simulator:
+    build:
+      context: .
+      dockerfile: src/Churn.Simulator/Dockerfile
+    environment:
+      CHURN_DB: "Host=db;Port=5432;Database=churn;Username=churn;Password=churn"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  training:
+    build:
+      context: .
+      dockerfile: src/Churn.Training/Dockerfile
+    environment:
+      CHURN_DB: "Host=db;Port=5432;Database=churn;Username=churn;Password=churn"
+    volumes:
+      - models:/app/models
+    depends_on:
+      simulator:
+        condition: service_completed_successfully
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Churn.Api/Dockerfile
+    environment:
+      ConnectionStrings__Churn: "Host=db;Port=5432;Database=churn;Username=churn;Password=churn"
+      Model__Path: /app/models/model_current.zip
+      Model__MetadataPath: /app/models/model_current.json
+    volumes:
+      - models:/app/models:ro
+    ports:
+      - "5080:8080"
+    depends_on:
+      training:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:
+  models:
