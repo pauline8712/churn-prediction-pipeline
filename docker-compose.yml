@@ -54,6 +54,21 @@ services:
       training:
         condition: service_completed_successfully
 
+  retrainer:
+    build:
+      context: .
+      dockerfile: src/Churn.Training/Dockerfile
+    command: ["--schedule"]
+    environment:
+      CHURN_DB: "Host=db;Port=5432;Database=churn;Username=churn;Password=churn"
+      RETRAIN_INTERVAL_HOURS: "24"   # once a day
+    volumes:
+      - models:/app/models
+    depends_on:
+      training:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
 volumes:
   pgdata:
   models:
