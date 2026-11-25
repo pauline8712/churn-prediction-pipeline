@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Churn.Core;
 using Churn.Data;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +27,7 @@ public class ChurnScoringService(
         if (user is null)
             return null;
 
-        var (risk, log) = Score(user, ReadMetadata());
+        var (risk, log) = Score(user, settings.ReadMetadata());
 
         db.PredictionLogs.Add(log);
         await db.SaveChangesAsync();
@@ -49,7 +48,7 @@ public class ChurnScoringService(
             .AsSplitQuery()
             .ToListAsync();
 
-        var metadata = ReadMetadata();
+        var metadata = settings.ReadMetadata();
         var scored = users.Select(u => Score(u, metadata)).ToList();
 
         // Log every prediction in a single round trip, not one insert per user
@@ -101,8 +100,4 @@ public class ChurnScoringService(
 
         return (risk, log);
     }
-
-    // Threshold and version come from the current model's metadata, so they follow the model
-    private ModelMetadata ReadMetadata() =>
-        JsonSerializer.Deserialize<ModelMetadata>(File.ReadAllText(settings.MetadataPath))!;
 }
